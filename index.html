@@ -275,10 +275,25 @@
 <button id="adminHiddenBtn" onclick="openAdmin()">⚙</button>
 
 <script>
+// ============================================================
+// CẤU HÌNH - DÁN ĐÚNG ID ADMIN CỦA BẠN (phải trùng ADMIN_ID trong server.js)
+// ============================================================
+const ADMIN_ID = 123456789; // ID Telegram của admin - lấy từ @userinfobot
+// Token bot KHÔNG đặt ở đây vì ai xem mã nguồn trang web cũng đọc được,
+// dễ bị lấy trộm để giả danh bot. Token chỉ khai báo 1 chỗ duy nhất
+// trong server.js (biến BOT_TOKEN) - nơi người dùng không xem được.
+// ============================================================
+
 const tg = window.Telegram?.WebApp;
 tg?.ready(); tg?.expand();
 
 let state = { products: [], me: null, settings: {} };
+
+// Nhận diện admin ngay lập tức từ dữ liệu Telegram gửi kèm (không cần chờ server phản hồi)
+const tgRawUser = tg?.initDataUnsafe?.user;
+if (tgRawUser && tgRawUser.id === ADMIN_ID) {
+  document.getElementById('adminHiddenBtn').style.display = 'flex';
+}
 
 function initDataHeader(){ return tg?.initData || ''; }
 async function api(path, opts = {}) {
@@ -294,7 +309,12 @@ function money(n){ return Number(n||0).toLocaleString('vi-VN') + 'đ'; }
 function notify(msg){ tg?.showAlert ? tg.showAlert(msg) : alert(msg); }
 
 async function loadMe() {
-  state.me = await api('/api/me');
+  try {
+    state.me = await api('/api/me');
+  } catch (e) {
+    notify('Không kết nối được server (server.js). Kiểm tra lại đã chạy "node server.js" và app đang mở qua bot chưa.');
+    return;
+  }
   document.getElementById('balancePill').textContent = money(state.me.balance);
   document.getElementById('profileName').textContent = state.me.name || '—';
   document.getElementById('profileBalance').textContent = money(state.me.balance);
@@ -526,42 +546,9 @@ function bindSubTabs() {
 (async function init() {
   bindMainTabs();
   bindSubTabs();
-  await runLoading();
+  loadMe();
+  loadProducts();
 })();
-
-// ---- MÀN HÌNH LOADING 0% -> 100% (cực nhanh) ----
-const RING_CIRC = 314; // 2 * π * r(50)
-function setLoaderPercent(p) {
-  document.getElementById('ringFg').style.strokeDashoffset = RING_CIRC - (p/100) * RING_CIRC;
-  document.getElementById('loaderPercent').textContent = p + '%';
-}
-function runLoading() {
-  return new Promise(resolve => {
-    let pct = 0;
-    setLoaderPercent(0);
-    const dataPromise = Promise.all([loadMe(), loadProducts()]).catch(() => {});
-
-    const tick = setInterval(() => {
-      if (pct < 92) {
-        pct = Math.min(92, pct + Math.random() * 22 + 16);
-        setLoaderPercent(Math.floor(pct));
-      }
-    }, 35);
-
-    dataPromise.then(() => {
-      clearInterval(tick);
-      const finish = setInterval(() => {
-        pct = Math.min(100, pct + 20);
-        setLoaderPercent(Math.floor(pct));
-        if (pct >= 100) {
-          clearInterval(finish);
-          document.getElementById('loadingScreen').classList.add('hide');
-          setTimeout(resolve, 280);
-        }
-      }, 10);
-    });
-  });
-}
 </script>
 </body>
 </html>
