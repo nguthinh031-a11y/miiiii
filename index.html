@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cửa hàng</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root{
+    --bg: var(--tg-theme-bg-color, #ffffff);
+    --text: var(--tg-theme-text-color, #111111);
+    --hint: var(--tg-theme-hint-color, #888888);
+    --link: var(--tg-theme-link-color, #2678b6);
+    --btn: var(--tg-theme-button-color, #2678b6);
+    --btn-text: var(--tg-theme-button-text-color, #ffffff);
+    --secbg: var(--tg-theme-secondary-bg-color, #f4f4f5);
+  }
+  * { box-sizing: border-box; }
+  html, body{ height:100%; }
+  body{
+    margin:0; font-family: -apple-system, Roboto, Helvetica, Arial, sans-serif;
+    background:var(--bg); color:var(--text);
+    padding-bottom: calc(70px + env(safe-area-inset-bottom,0px));
+    overflow-x:hidden;
+  }
+
+  /* ===== Nền hiệu ứng (blob trôi nhẹ) ===== */
+  #bgFx{ position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
+  #bgFx .blob{ position:absolute; border-radius:50%; filter:blur(55px); }
+  #bgFx .b1{
+    width:240px; height:240px; top:-70px; left:-60px; background:var(--btn); opacity:.28;
+    animation: floatA 17s ease-in-out infinite;
+  }
+  #bgFx .b2{
+    width:200px; height:200px; top:35%; right:-70px; background:var(--link); opacity:.24;
+    animation: floatB 21s ease-in-out infinite;
+  }
+  #bgFx .b3{
+    width:220px; height:220px; bottom:-80px; left:20%; background:var(--btn); opacity:.2;
+    animation: floatC 25s ease-in-out infinite;
+  }
+  @keyframes floatA{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(50px,70px) scale(1.12); } }
+  @keyframes floatB{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(-45px,40px) scale(1.08); } }
+  @keyframes floatC{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(35px,-50px) scale(1.15); } }
+
+  /* ===== Màn hình loading ===== */
+  #loadingScreen{
+    position:fixed; inset:0; z-index:999; background:var(--bg);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
+    transition: opacity .45s ease, transform .45s ease;
+  }
+  #loadingScreen.hide{ opacity:0; transform:scale(1.06); pointer-events:none; }
+  .loader-wrap{ position:relative; width:116px; height:116px; }
+  .loader-spin{
+    position:absolute; inset:-8px; border-radius:50%;
+    border:3px dashed var(--link); opacity:.35;
+    animation: spin 2.4s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .loader-ring{ width:116px; height:116px; transform:rotate(-90deg); }
+  .ring-bg{ fill:none; stroke:var(--secbg); stroke-width:8; }
+  .ring-fg{
+    fill:none; stroke:var(--btn); stroke-width:8; stroke-linecap:round;
+    stroke-dasharray:314; stroke-dashoffset:314;
+    transition: stroke-dashoffset .18s ease-out;
+    filter:drop-shadow(0 0 5px var(--btn));
+  }
+  .loader-percent{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:21px; font-weight:700; color:var(--text);
+  }
+  .loader-title{ font-size:13px; color:var(--hint); letter-spacing:.4px; }
+  .loader-logo{ font-size:30px; position:absolute; top:-46px; left:50%; transform:translateX(-50%); }
+
+  header{
+    position:sticky; top:0; z-index:10;
+    background:linear-gradient(180deg, var(--bg) 80%, transparent);
+    backdrop-filter:blur(10px);
+    padding: calc(10px + env(safe-area-inset-top,0px)) 16px 10px;
+    display:flex; align-items:center; justify-content:space-between;
+    border-bottom:1px solid var(--secbg);
+  }
+  header h1{ font-size:17px; margin:0; letter-spacing:.2px; }
+  .balance-pill{
+    background:linear-gradient(135deg, var(--btn), var(--link));
+    color:var(--btn-text); padding:7px 14px; border-radius:20px; font-size:13px; font-weight:700;
+    box-shadow:0 3px 10px -3px var(--btn);
+  }
+  main{ padding: 12px 16px 24px; animation: fadeUp .4s ease; }
+  @keyframes fadeUp{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
+  h3.section{ font-size:14px; color:var(--hint); margin:16px 0 8px; }
+
+  /* ===== Nút admin ẩn ở góc ===== */
+  #adminHiddenBtn{
+    position:fixed; right:12px; bottom:calc(70px + env(safe-area-inset-bottom,0px));
+    width:36px; height:36px; border-radius:50%; border:none;
+    background:var(--secbg); color:var(--hint); font-size:15px;
+    display:none; align-items:center; justify-content:center;
+    opacity:.32; z-index:14; cursor:pointer;
+    box-shadow:0 2px 8px rgba(0,0,0,.15);
+    transition: opacity .2s, transform .2s;
+  }
+  #adminHiddenBtn:active{ opacity:.9; transform:scale(.92); }
+
+  /* Bottom nav */
+  nav.bottom{
+    position:fixed; left:0; right:0; bottom:0; background:var(--bg);
+    border-top:1px solid var(--secbg); display:flex;
+    padding-bottom: env(safe-area-inset-bottom,0px); z-index:15;
+    box-shadow:0 -4px 14px -8px rgba(0,0,0,.25);
+  }
+  nav.bottom button{
+    flex:1; border:none; background:none; padding:10px 4px 8px; font-size:11px;
+    color:var(--hint); display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer;
+    transition: color .15s, transform .15s;
+  }
+  nav.bottom button:active{ transform:scale(.92); }
+  nav.bottom button .ic{ font-size:19px; }
+  nav.bottom button.active{ color:var(--btn); font-weight:600; }
+
+  .grid{ display:grid; grid-template-columns: repeat(2, 1fr); gap:12px; }
+  .card{
+    background:var(--secbg); border-radius:16px; overflow:hidden; display:flex; flex-direction:column;
+    box-shadow:0 3px 12px -6px rgba(0,0,0,.25); transition: transform .15s ease;
+  }
+  .card:active{ transform:scale(.97); }
+  .card img{ width:100%; height:110px; object-fit:cover; background:#ddd; }
+  .card-body{ padding:10px; display:flex; flex-direction:column; gap:6px; flex:1; }
+  .card-body b{ font-size:14px; line-height:1.3; }
+  .price{ color:var(--link); font-weight:700; font-size:14px; }
+  .desc{ font-size:12px; color:var(--hint); flex:1; }
+  .stock{ font-size:11px; color:var(--hint); }
+  button.buy{
+    border:none; background:linear-gradient(135deg, var(--btn), var(--link)); color:var(--btn-text);
+    padding:9px; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; transition: transform .12s;
+  }
+  button.buy:active{ transform:scale(.95); }
+  button.buy:disabled{ opacity:.45; background:var(--hint); }
+  .empty{ text-align:center; color:var(--hint); padding:40px 0; }
+
+  input, textarea{
+    width:100%; padding:10px; border-radius:10px; border:1px solid var(--secbg);
+    background:var(--secbg); color:var(--text); font-size:14px; margin-bottom:8px;
+  }
+  .primary-btn{
+    width:100%; border:none; background:linear-gradient(135deg, var(--btn), var(--link)); color:var(--btn-text);
+    padding:12px; border-radius:12px; font-size:15px; font-weight:600; cursor:pointer;
+    box-shadow:0 4px 12px -4px var(--btn); transition: transform .12s;
+  }
+  .primary-btn:active{ transform:scale(.97); }
+  .del-btn{ border:none; background:#e74c3c22; color:#e74c3c; padding:6px 10px; border-radius:8px; font-size:12px; cursor:pointer; }
+  .ok-btn{ border:none; background:#2ecc7122; color:#27ae60; padding:6px 10px; border-radius:8px; font-size:12px; cursor:pointer; }
+
+  /* Hồ sơ */
+  .profile-card{ background:var(--secbg); border-radius:16px; padding:20px; text-align:center; }
+  .profile-card .bal{ font-size:28px; font-weight:700; color:var(--link); margin:6px 0; }
+  .info-row{ display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--bg); font-size:13px; }
+
+  /* Nạp tiền */
+  .qr-box{ text-align:center; background:var(--secbg); border-radius:14px; padding:16px; }
+  .qr-box img{ max-width:220px; width:100%; border-radius:10px; background:#fff; }
+  .bank-info div{ font-size:13px; padding:4px 0; }
+
+  /* Lịch sử / đơn / key list */
+  .order-card{ background:var(--secbg); border-radius:12px; padding:10px; margin-bottom:10px; font-size:13px; }
+  .status{ display:inline-block; padding:2px 8px; border-radius:8px; background:var(--btn); color:var(--btn-text); font-size:11px; }
+  .status.rejected{ background:#e74c3c; }
+  .status.approved{ background:#27ae60; }
+  code.keybox{ display:block; background:var(--bg); padding:8px; border-radius:8px; margin-top:6px; word-break:break-all; }
+
+  .admin-item{ display:flex; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid var(--secbg); }
+  .admin-item img{ width:44px; height:44px; border-radius:8px; object-fit:cover; background:#ddd; flex-shrink:0; }
+  .admin-item .info{ flex:1; min-width:0; }
+  .admin-item .info b{ font-size:13px; }
+  .admin-item .info span{ font-size:12px; color:var(--hint); display:block; }
+  .admin-item .acts{ display:flex; gap:6px; flex-shrink:0; }
+
+  select{ width:100%; padding:10px; border-radius:10px; border:1px solid var(--secbg); background:var(--secbg); color:var(--text); font-size:14px; margin-bottom:8px; }
+  .key-row{ display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--bg); font-size:12px; gap:8px; }
+  .key-row span{ word-break:break-all; }
+
+  .sub-tabs{ display:flex; gap:6px; overflow-x:auto; margin-bottom:10px; }
+  .sub-tab{ border:none; background:var(--secbg); color:var(--text); padding:7px 12px; border-radius:20px; font-size:12px; white-space:nowrap; cursor:pointer; }
+  .sub-tab.active{ background:var(--btn); color:var(--btn-text); }
+</style>
+</head>
+<body>
+
+<div id="loadingScreen">
+  <div class="loader-wrap">
+    <span class="loader-logo">🛍</span>
+    <div class="loader-spin"></div>
+    <svg class="loader-ring" viewBox="0 0 120 120">
+      <circle class="ring-bg" cx="60" cy="60" r="50"/>
+      <circle class="ring-fg" id="ringFg" cx="60" cy="60" r="50"/>
+    </svg>
+    <div class="loader-percent" id="loaderPercent">0%</div>
+  </div>
+  <div class="loader-title">Đang tải cửa hàng...</div>
+</div>
+
+<header>
+  <h1 id="shopTitle">🛍 Cửa hàng</h1>
+  <div class="balance-pill" id="balancePill">0đ</div>
+</header>
+
+<main>
+  <!-- SẢN PHẨM -->
+  <div id="view-shop" class="grid"></div>
+
+  <!-- HỒ SƠ -->
+  <div id="view-profile" style="display:none">
+    <div class="profile-card">
+      <div id="profileName" style="font-weight:600">—</div>
+      <div class="bal" id="profileBalance">0đ</div>
+      <div style="color:var(--hint);font-size:12px">Số dư khả dụng</div>
+    </div>
+    <div style="margin-top:16px">
+      <div class="info-row"><span>ID Telegram</span><b id="profileId">—</b></div>
+      <div class="info-row"><span>Username</span><b id="profileUsername">—</b></div>
+    </div>
+  </div>
+
+  <!-- NẠP TIỀN -->
+  <div id="view-deposit" style="display:none">
+    <div class="qr-box">
+      <img id="qrImg" src="" style="display:none">
+      <div id="noQr" class="empty" style="padding:10px">Admin chưa cập nhật mã QR</div>
+      <div class="bank-info" style="margin-top:10px;text-align:left">
+        <div><b>Ngân hàng:</b> <span id="bankName">—</span></div>
+        <div><b>Số TK:</b> <span id="accountNumber">—</span></div>
+        <div><b>Chủ TK:</b> <span id="accountHolder">—</span></div>
+        <div style="color:var(--hint)">Nội dung CK: ghi ID Telegram của bạn để admin đối soát nhanh hơn</div>
+      </div>
+    </div>
+    <h3 class="section">Gửi yêu cầu nạp tiền</h3>
+    <input id="depAmount" type="number" placeholder="Số tiền đã chuyển (đ)">
+    <textarea id="depNote" rows="2" placeholder="Ghi chú (không bắt buộc)"></textarea>
+    <button class="primary-btn" onclick="submitDeposit()">Gửi yêu cầu</button>
+    <h3 class="section">Lịch sử nạp tiền</h3>
+    <div id="depositHistory"></div>
+  </div>
+
+  <!-- LỊCH SỬ ĐÃ MUA -->
+  <div id="view-history" style="display:none"></div>
+
+  <!-- ADMIN -->
+  <div id="view-admin" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h2 style="margin:0;font-size:16px">⚙️ Trang quản trị</h2>
+      <button class="del-btn" onclick="closeAdmin()">✕ Đóng</button>
+    </div>
+    <div class="sub-tabs">
+      <button class="sub-tab active" data-sub="prod">Sản phẩm</button>
+      <button class="sub-tab" data-sub="keys">Kho key</button>
+      <button class="sub-tab" data-sub="qr">Mã QR</button>
+      <button class="sub-tab" data-sub="dep">Duyệt nạp tiền</button>
+    </div>
+
+    <div id="admin-prod">
+      <h3 class="section">➕ Thêm sản phẩm</h3>
+      <input id="pName" placeholder="Tên sản phẩm">
+      <input id="pPrice" type="number" placeholder="Giá (đ)">
+      <input id="pImage" placeholder="Link ảnh (URL)">
+      <textarea id="pDesc" rows="2" placeholder="Mô tả"></textarea>
+      <button class="primary-btn" onclick="addProduct()">Thêm sản phẩm</button>
+      <h3 class="section">📦 Danh sách sản phẩm</h3>
+      <div id="adminProductList"></div>
+    </div>
+
+    <div id="admin-keys" style="display:none">
+      <h3 class="section">🔑 Quản lý key theo sản phẩm</h3>
+      <select id="keyProductSelect" onchange="loadKeysForProduct()"></select>
+      <textarea id="newKeys" rows="4" placeholder="Dán nhiều key, mỗi dòng 1 key"></textarea>
+      <button class="primary-btn" onclick="addKeys()">Thêm key vào kho</button>
+      <h3 class="section">Key còn trong kho (<span id="keyCount">0</span>)</h3>
+      <div id="keyList"></div>
+    </div>
+
+    <div id="admin-qr" style="display:none">
+      <h3 class="section">🏦 Cập nhật mã QR & thông tin ngân hàng</h3>
+      <input id="setQrImage" placeholder="Link ảnh mã QR">
+      <input id="setBankName" placeholder="Tên ngân hàng">
+      <input id="setAccountNumber" placeholder="Số tài khoản">
+      <input id="setAccountHolder" placeholder="Tên chủ tài khoản">
+      <button class="primary-btn" onclick="saveSettings()">Lưu</button>
+    </div>
+
+    <div id="admin-dep" style="display:none">
+      <h3 class="section">💳 Yêu cầu nạp tiền chờ duyệt</h3>
+      <div id="adminDepositList"></div>
+    </div>
+  </div>
+</main>
+
+<nav class="bottom" id="bottomNav">
+  <button class="tab-btn active" data-tab="shop"><span class="ic">🛍</span>Sản phẩm</button>
+  <button class="tab-btn" data-tab="profile"><span class="ic">👤</span>Hồ sơ</button>
+  <button class="tab-btn" data-tab="deposit"><span class="ic">💳</span>Nạp tiền</button>
+  <button class="tab-btn" data-tab="history"><span class="ic">🧾</span>Lịch sử</button>
+</nav>
+
+<button id="adminHiddenBtn" onclick="openAdmin()">⚙</button>
+
+<script>
+const tg = window.Telegram?.WebApp;
+tg?.ready(); tg?.expand();
+
+let state = { products: [], me: null, settings: {} };
+
+function initDataHeader(){ return tg?.initData || ''; }
+async function api(path, opts = {}) {
+  const res = await fetch(path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': initDataHeader(), ...(opts.headers||{}) }
+  });
+  const data = await res.json().catch(()=>({}));
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+function money(n){ return Number(n||0).toLocaleString('vi-VN') + 'đ'; }
+function notify(msg){ tg?.showAlert ? tg.showAlert(msg) : alert(msg); }
+
+async function loadMe() {
+  state.me = await api('/api/me');
+  document.getElementById('balancePill').textContent = money(state.me.balance);
+  document.getElementById('profileName').textContent = state.me.name || '—';
+  document.getElementById('profileBalance').textContent = money(state.me.balance);
+  document.getElementById('profileId').textContent = state.me.id;
+  document.getElementById('profileUsername').textContent = state.me.username ? '@'+state.me.username : '—';
+  if (state.me.isAdmin) {
+    document.getElementById('adminHiddenBtn').style.display = 'flex';
+  }
+}
+
+async function loadProducts() {
+  state.products = await api('/api/products');
+  renderShop();
+  if (state.me?.isAdmin) { renderAdminProducts(); fillKeyProductSelect(); }
+}
+function renderShop() {
+  const el = document.getElementById('view-shop');
+  if (!state.products.length) { el.innerHTML = `<div class="empty">Chưa có sản phẩm nào.</div>`; return; }
+  el.innerHTML = state.products.map(p => `
+    <div class="card">
+      <img src="${p.image || 'https://placehold.co/300x220?text=No+Image'}" onerror="this.src='https://placehold.co/300x220?text=No+Image'">
+      <div class="card-body">
+        <b>${p.name}</b>
+        <span class="price">${money(p.price)}</span>
+        <span class="desc">${p.description || ''}</span>
+        <span class="stock">Còn lại: ${p.stock}</span>
+        <button class="buy" ${p.stock<=0?'disabled':''} onclick="buy('${p.id}')">${p.stock<=0?'Hết hàng':'Mua ngay'}</button>
+      </div>
+    </div>
+  `).join('');
+}
+async function buy(id) {
+  try {
+    const r = await api('/api/purchase/' + id, { method:'POST' });
+    notify('Mua thành công! Key: ' + r.key);
+    await loadMe(); await loadProducts();
+  } catch(e) { notify('Lỗi: ' + e.message); }
+}
+
+// ---- HỒ SƠ đã render trong loadMe ----
+
+// ---- NẠP TIỀN ----
+async function loadSettings() {
+  state.settings = await api('/api/settings');
+  const s = state.settings;
+  if (s.qrImage) { document.getElementById('qrImg').src = s.qrImage; document.getElementById('qrImg').style.display='block'; document.getElementById('noQr').style.display='none'; }
+  document.getElementById('bankName').textContent = s.bankName || '—';
+  document.getElementById('accountNumber').textContent = s.accountNumber || '—';
+  document.getElementById('accountHolder').textContent = s.accountHolder || '—';
+}
+async function submitDeposit() {
+  const amount = document.getElementById('depAmount').value;
+  const note = document.getElementById('depNote').value;
+  if (!amount || Number(amount) <= 0) return notify('Nhập số tiền hợp lệ');
+  try {
+    await api('/api/deposits', { method:'POST', body: JSON.stringify({ amount, note }) });
+    document.getElementById('depAmount').value=''; document.getElementById('depNote').value='';
+    notify('Đã gửi yêu cầu, chờ admin duyệt.');
+    loadDepositHistory();
+  } catch(e){ notify('Lỗi: ' + e.message); }
+}
+async function loadDepositHistory() {
+  const list = await api('/api/deposits');
+  const el = document.getElementById('depositHistory');
+  el.innerHTML = list.map(d => `
+    <div class="order-card">
+      <div style="display:flex;justify-content:space-between"><b>+${money(d.amount)}</b><span class="status ${d.status}">${d.status}</span></div>
+      ${d.note ? `<div style="color:var(--hint)">${d.note}</div>` : ''}
+    </div>
+  `).join('') || `<div class="empty">Chưa có yêu cầu nạp tiền</div>`;
+}
+
+// ---- LỊCH SỬ ĐÃ MUA ----
+async function loadHistory() {
+  const list = await api('/api/purchases');
+  const el = document.getElementById('view-history');
+  el.innerHTML = list.map(o => `
+    <div class="order-card">
+      <div style="display:flex;justify-content:space-between"><b>${o.productName}</b><span>${money(o.price)}</span></div>
+      <div style="color:var(--hint);font-size:11px">${new Date(o.createdAt).toLocaleString('vi-VN')}</div>
+      <code class="keybox">${o.key}</code>
+    </div>
+  `).join('') || `<div class="empty">Bạn chưa mua sản phẩm nào.</div>`;
+}
+
+// ---- ADMIN: SẢN PHẨM ----
+async function addProduct() {
+  const name = document.getElementById('pName').value.trim();
+  const price = document.getElementById('pPrice').value;
+  const image = document.getElementById('pImage').value.trim();
+  const description = document.getElementById('pDesc').value.trim();
+  if (!name || !price) return notify('Nhập tên và giá');
+  await api('/api/products', { method:'POST', body: JSON.stringify({ name, price, image, description }) });
+  ['pName','pPrice','pImage','pDesc'].forEach(id => document.getElementById(id).value='');
+  await loadProducts();
+}
+async function deleteProduct(id) {
+  await api('/api/products/' + id, { method:'DELETE' });
+  await loadProducts();
+}
+function renderAdminProducts() {
+  document.getElementById('adminProductList').innerHTML = state.products.map(p => `
+    <div class="admin-item">
+      <img src="${p.image || 'https://placehold.co/100'}">
+      <div class="info"><b>${p.name}</b><span>${money(p.price)} · còn ${p.stock}</span></div>
+      <div class="acts"><button class="del-btn" onclick="deleteProduct('${p.id}')">Xóa</button></div>
+    </div>
+  `).join('') || `<div class="empty">Chưa có sản phẩm</div>`;
+}
+
+// ---- ADMIN: KHO KEY ----
+function fillKeyProductSelect() {
+  const sel = document.getElementById('keyProductSelect');
+  sel.innerHTML = state.products.map(p => `<option value="${p.id}">${p.name} (còn ${p.stock})</option>`).join('');
+  if (state.products.length) loadKeysForProduct();
+}
+async function loadKeysForProduct() {
+  const id = document.getElementById('keyProductSelect').value;
+  if (!id) return;
+  const keys = await api('/api/products/' + id + '/keys');
+  document.getElementById('keyCount').textContent = keys.length;
+  document.getElementById('keyList').innerHTML = keys.map(k => `
+    <div class="key-row"><span>${k}</span><button class="del-btn" onclick="deleteKey('${id}', '${k.replace(/'/g,"\\'")}')">Xóa</button></div>
+  `).join('') || `<div class="empty">Chưa có key nào</div>`;
+}
+async function addKeys() {
+  const id = document.getElementById('keyProductSelect').value;
+  const keysText = document.getElementById('newKeys').value;
+  if (!id) return notify('Chưa có sản phẩm nào để thêm key');
+  if (!keysText.trim()) return notify('Dán ít nhất 1 key');
+  const r = await api('/api/products/' + id + '/keys', { method:'POST', body: JSON.stringify({ keysText }) });
+  document.getElementById('newKeys').value = '';
+  notify('Đã thêm ' + r.added + ' key');
+  await loadProducts();
+  loadKeysForProduct();
+}
+async function deleteKey(id, key) {
+  await api('/api/products/' + id + '/keys', { method:'DELETE', body: JSON.stringify({ key }) });
+  await loadProducts();
+  loadKeysForProduct();
+}
+
+// ---- ADMIN: QR ----
+async function saveSettings() {
+  const qrImage = document.getElementById('setQrImage').value.trim();
+  const bankName = document.getElementById('setBankName').value.trim();
+  const accountNumber = document.getElementById('setAccountNumber').value.trim();
+  const accountHolder = document.getElementById('setAccountHolder').value.trim();
+  await api('/api/settings', { method:'PUT', body: JSON.stringify({ qrImage, bankName, accountNumber, accountHolder }) });
+  notify('Đã lưu cài đặt');
+  loadSettings();
+}
+function fillSettingsForm() {
+  const s = state.settings;
+  document.getElementById('setQrImage').value = s.qrImage || '';
+  document.getElementById('setBankName').value = s.bankName || '';
+  document.getElementById('setAccountNumber').value = s.accountNumber || '';
+  document.getElementById('setAccountHolder').value = s.accountHolder || '';
+}
+
+// ---- ADMIN: DUYỆT NẠP TIỀN ----
+async function loadAdminDeposits() {
+  const list = await api('/api/deposits');
+  document.getElementById('adminDepositList').innerHTML = list.map(d => `
+    <div class="order-card">
+      <div style="display:flex;justify-content:space-between"><b>${d.userName || d.userId}</b><span class="status ${d.status}">${d.status}</span></div>
+      <div>Số tiền: <b>${money(d.amount)}</b></div>
+      ${d.note ? `<div style="color:var(--hint)">${d.note}</div>` : ''}
+      ${d.status==='pending' ? `
+        <div style="margin-top:6px;display:flex;gap:6px">
+          <button class="ok-btn" onclick="reviewDeposit('${d.id}','approved')">Duyệt +${money(d.amount)}</button>
+          <button class="del-btn" onclick="reviewDeposit('${d.id}','rejected')">Từ chối</button>
+        </div>` : ''}
+    </div>
+  `).join('') || `<div class="empty">Không có yêu cầu nào</div>`;
+}
+async function reviewDeposit(id, status) {
+  await api('/api/deposits/' + id, { method:'PUT', body: JSON.stringify({ status }) });
+  loadAdminDeposits();
+}
+
+// ---- ĐIỀU HƯỚNG TAB CHÍNH ----
+function bindMainTabs() {
+  document.querySelectorAll('#bottomNav .tab-btn').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('#bottomNav .tab-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.dataset.tab;
+      ['shop','profile','deposit','history'].forEach(t => {
+        document.getElementById('view-'+t).style.display = (t===tab) ? (t==='shop'?'grid':'block') : 'none';
+      });
+      if (tab === 'deposit') { loadSettings(); loadDepositHistory(); }
+      if (tab === 'history') loadHistory();
+    };
+  });
+}
+
+// ---- ADMIN ẩn ở góc: mở / đóng ----
+function openAdmin() {
+  ['shop','profile','deposit','history'].forEach(t => document.getElementById('view-'+t).style.display = 'none');
+  document.getElementById('view-admin').style.display = 'block';
+  document.getElementById('bottomNav').style.display = 'none';
+  document.getElementById('adminHiddenBtn').style.display = 'none';
+  renderAdminProducts();
+  fillKeyProductSelect();
+  loadSettings().then(fillSettingsForm);
+  loadAdminDeposits();
+}
+function closeAdmin() {
+  document.getElementById('view-admin').style.display = 'none';
+  document.getElementById('bottomNav').style.display = 'flex';
+  document.getElementById('adminHiddenBtn').style.display = 'flex';
+  const activeBtn = document.querySelector('#bottomNav .tab-btn.active') || document.querySelector('#bottomNav .tab-btn');
+  activeBtn.click();
+}
+function bindSubTabs() {
+  document.querySelectorAll('.sub-tab').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('.sub-tab').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const sub = btn.dataset.sub;
+      ['prod','keys','qr','dep'].forEach(s => {
+        document.getElementById('admin-'+s).style.display = (s===sub) ? 'block' : 'none';
+      });
+    };
+  });
+}
+
+(async function init() {
+  bindMainTabs();
+  bindSubTabs();
+  await runLoading();
+})();
+
+// ---- MÀN HÌNH LOADING 0% -> 100% ----
+const RING_CIRC = 314; // 2 * π * r(50)
+function setLoaderPercent(p) {
+  document.getElementById('ringFg').style.strokeDashoffset = RING_CIRC - (p/100) * RING_CIRC;
+  document.getElementById('loaderPercent').textContent = p + '%';
+}
+function runLoading() {
+  return new Promise(resolve => {
+    let pct = 0;
+    setLoaderPercent(0);
+    const dataPromise = Promise.all([loadMe(), loadProducts()]).catch(() => {});
+
+    const tick = setInterval(() => {
+      if (pct < 88) {
+        pct = Math.min(88, pct + Math.random() * 9 + 3);
+        setLoaderPercent(Math.floor(pct));
+      }
+    }, 130);
+
+    dataPromise.then(() => {
+      clearInterval(tick);
+      const finish = setInterval(() => {
+        pct = Math.min(100, pct + 5);
+        setLoaderPercent(Math.floor(pct));
+        if (pct >= 100) {
+          clearInterval(finish);
+          setTimeout(() => {
+            document.getElementById('loadingScreen').classList.add('hide');
+            setTimeout(resolve, 450);
+          }, 250);
+        }
+      }, 20);
+    });
+  });
+}
+</script>
+</body>
+</html>
