@@ -24,7 +24,6 @@
     overflow-x:hidden;
   }
 
-  /* ===== Nền hiệu ứng (blob trôi nhẹ) ===== */
   #bgFx{ position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; }
   #bgFx .blob{ position:absolute; border-radius:50%; filter:blur(55px); }
   #bgFx .b1{
@@ -62,7 +61,6 @@
   @keyframes zoomIn{ from{ opacity:0; transform:scale(.93) translateY(10px); } to{ opacity:1; transform:scale(1) translateY(0); } }
   h3.section{ font-size:14px; color:var(--hint); margin:16px 0 8px; }
 
-  /* ===== Nút admin ẩn ở góc ===== */
   #adminHiddenBtn{
     position:fixed; right:12px; bottom:calc(70px + env(safe-area-inset-bottom,0px));
     width:36px; height:36px; border-radius:50%; border:none;
@@ -74,7 +72,6 @@
   }
   #adminHiddenBtn:active{ opacity:.9; transform:scale(.92); }
 
-  /* Bottom nav */
   nav.bottom{
     position:fixed; left:0; right:0; bottom:0; background:var(--bg);
     border-top:1px solid var(--secbg); display:flex;
@@ -98,10 +95,6 @@
     transition: transform .15s ease;
   }
   @keyframes cardIn{ from{ opacity:0; transform:scale(.82) translateY(18px); } to{ opacity:1; transform:scale(1) translateY(0); } }
-  .card:nth-child(1){ animation-delay:.03s; } .card:nth-child(2){ animation-delay:.07s; }
-  .card:nth-child(3){ animation-delay:.11s; } .card:nth-child(4){ animation-delay:.15s; }
-  .card:nth-child(5){ animation-delay:.19s; } .card:nth-child(6){ animation-delay:.23s; }
-  .card:nth-child(n+7){ animation-delay:.26s; }
   .card:active{ transform:scale(.97); }
   .card img{ width:100%; height:110px; object-fit:cover; background:#ddd; }
   .card-body{ padding:10px; display:flex; flex-direction:column; gap:6px; flex:1; }
@@ -117,7 +110,7 @@
   button.buy:disabled{ opacity:.45; background:var(--hint); }
   .empty{ text-align:center; color:var(--hint); padding:40px 0; }
 
-  input, textarea{
+  input, textarea, select{
     width:100%; padding:10px; border-radius:10px; border:1px solid var(--secbg);
     background:var(--secbg); color:var(--text); font-size:14px; margin-bottom:8px;
   }
@@ -130,17 +123,14 @@
   .del-btn{ border:none; background:#e74c3c22; color:#e74c3c; padding:6px 10px; border-radius:8px; font-size:12px; cursor:pointer; }
   .ok-btn{ border:none; background:#2ecc7122; color:#27ae60; padding:6px 10px; border-radius:8px; font-size:12px; cursor:pointer; }
 
-  /* Hồ sơ */
   .profile-card{ background:var(--secbg); border-radius:16px; padding:20px; text-align:center; }
   .profile-card .bal{ font-size:28px; font-weight:700; color:var(--link); margin:6px 0; }
   .info-row{ display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--bg); font-size:13px; }
 
-  /* Nạp tiền */
   .qr-box{ text-align:center; background:var(--secbg); border-radius:14px; padding:16px; }
   .qr-box img{ max-width:220px; width:100%; border-radius:10px; background:#fff; }
   .bank-info div{ font-size:13px; padding:4px 0; }
 
-  /* Lịch sử / đơn / key list */
   .order-card{ background:var(--secbg); border-radius:12px; padding:10px; margin-bottom:10px; font-size:13px; }
   .status{ display:inline-block; padding:2px 8px; border-radius:8px; background:var(--btn); color:var(--btn-text); font-size:11px; }
   .status.rejected{ background:#e74c3c; }
@@ -154,7 +144,6 @@
   .admin-item .info span{ font-size:12px; color:var(--hint); display:block; }
   .admin-item .acts{ display:flex; gap:6px; flex-shrink:0; }
 
-  select{ width:100%; padding:10px; border-radius:10px; border:1px solid var(--secbg); background:var(--secbg); color:var(--text); font-size:14px; margin-bottom:8px; }
   .key-row{ display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--bg); font-size:12px; gap:8px; }
   .key-row span{ word-break:break-all; }
 
@@ -225,6 +214,7 @@
     <div class="sub-tabs">
       <button class="sub-tab active" data-sub="prod">Sản phẩm</button>
       <button class="sub-tab" data-sub="keys">Kho key</button>
+      <button class="sub-tab" data-sub="sellers">Quản lý Seller</button>
       <button class="sub-tab" data-sub="qr">Mã QR</button>
       <button class="sub-tab" data-sub="dep">Duyệt nạp tiền</button>
     </div>
@@ -247,6 +237,15 @@
       <button class="primary-btn" onclick="addKeys()">Thêm key vào kho</button>
       <h3 class="section">Key còn trong kho (<span id="keyCount">0</span>)</h3>
       <div id="keyList"></div>
+    </div>
+
+    <!-- Tab quản lý Seller giá rẻ hơn -->
+    <div id="admin-sellers" style="display:none">
+      <h3 class="section">👥 Thêm/Cấp quyền Seller (Giá rẻ hơn)</h3>
+      <input id="sellerTelegramId" type="number" placeholder="Nhập ID Telegram của Seller">
+      <button class="primary-btn" onclick="addSeller()">Thêm Seller</button>
+      <h3 class="section">Danh sách Seller hiện tại</h3>
+      <div id="sellerList"></div>
     </div>
 
     <div id="admin-qr" style="display:none">
@@ -275,27 +274,13 @@
 <button id="adminHiddenBtn" onclick="openAdmin()">⚙</button>
 
 <script>
-// ============================================================
-// CẤU HÌNH - DÁN ĐÚNG ID ADMIN CỦA BẠN (phải trùng ADMIN_ID trong server.js)
-// ============================================================
-const ADMIN_ID = 7403694945; // ID Telegram của admin - lấy từ @userinfobot
-// Token bot KHÔNG đặt ở đây vì ai xem mã nguồn trang web cũng đọc được,
-// dễ bị lấy trộm để giả danh bot. Token chỉ khai báo 1 chỗ duy nhất
-// trong server.js (biến BOT_TOKEN) - nơi người dùng không xem được.
-// ============================================================
-
 const tg = window.Telegram?.WebApp;
 tg?.ready(); tg?.expand();
 
 let state = { products: [], me: null, settings: {} };
 
-// Nhận diện admin ngay lập tức từ dữ liệu Telegram gửi kèm (không cần chờ server phản hồi)
-const tgRawUser = tg?.initDataUnsafe?.user;
-if (tgRawUser && tgRawUser.id === ADMIN_ID) {
-  document.getElementById('adminHiddenBtn').style.display = 'flex';
-}
-
 function initDataHeader(){ return tg?.initData || ''; }
+
 async function api(path, opts = {}) {
   const res = await fetch(path, {
     ...opts,
@@ -305,6 +290,7 @@ async function api(path, opts = {}) {
   if (!res.ok) throw new Error(data.error || res.statusText);
   return data;
 }
+
 function money(n){ return Number(n||0).toLocaleString('vi-VN') + 'đ'; }
 function notify(msg){ tg?.showAlert ? tg.showAlert(msg) : alert(msg); }
 
@@ -312,7 +298,8 @@ async function loadMe() {
   try {
     state.me = await api('/api/me');
   } catch (e) {
-    notify('Không kết nối được server (server.js). Kiểm tra lại đã chạy "node server.js" và app đang mở qua bot chưa.');
+    console.error(e);
+    notify('Không kết nối được server (server.js). Hãy chắc chắn bạn mở ứng dụng qua Bot Telegram và server đang chạy.');
     return;
   }
   document.getElementById('balancePill').textContent = money(state.me.balance);
@@ -320,7 +307,8 @@ async function loadMe() {
   document.getElementById('profileBalance').textContent = money(state.me.balance);
   document.getElementById('profileId').textContent = state.me.id;
   document.getElementById('profileUsername').textContent = state.me.username ? '@'+state.me.username : '—';
-  if (state.me.isAdmin) {
+  
+  if (state.me.isAdmin || state.me.isSeller) {
     document.getElementById('adminHiddenBtn').style.display = 'flex';
   }
 }
@@ -328,24 +316,35 @@ async function loadMe() {
 async function loadProducts() {
   state.products = await api('/api/products');
   renderShop();
-  if (state.me?.isAdmin) { renderAdminProducts(); fillKeyProductSelect(); }
+  if (state.me?.isAdmin) { 
+    renderAdminProducts(); 
+    fillKeyProductSelect(); 
+    loadSellers();
+  }
 }
+
 function renderShop() {
   const el = document.getElementById('view-shop');
   if (!state.products.length) { el.innerHTML = `<div class="empty">Chưa có sản phẩm nào.</div>`; return; }
-  el.innerHTML = state.products.map(p => `
-    <div class="card">
-      <img src="${p.image || 'https://placehold.co/300x220?text=No+Image'}" onerror="this.src='https://placehold.co/300x220?text=No+Image'">
-      <div class="card-body">
-        <b>${p.name}</b>
-        <span class="price">${money(p.price)}</span>
-        <span class="desc">${p.description || ''}</span>
-        <span class="stock">Còn lại: ${p.stock}</span>
-        <button class="buy" ${p.stock<=0?'disabled':''} onclick="buy('${p.id}')">${p.stock<=0?'Hết hàng':'Mua ngay'}</button>
+  
+  // Nếu là seller, có thể hiển thị giá seller hoặc giá chung tùy cấu hình server trả về
+  el.innerHTML = state.products.map(p => {
+    const displayPrice = (state.me?.isSeller && p.sellerPrice !== undefined) ? p.sellerPrice : p.price;
+    return `
+      <div class="card">
+        <img src="${p.image || 'https://placehold.co/300x220?text=No+Image'}" onerror="this.src='https://placehold.co/300x220?text=No+Image'">
+        <div class="card-body">
+          <b>${p.name}</b>
+          <span class="price">${money(displayPrice)} ${state.me?.isSeller ? '<small style="color:green">(Giá sỉ)</small>' : ''}</span>
+          <span class="desc">${p.description || ''}</span>
+          <span class="stock">Còn lại: ${p.stock}</span>
+          <button class="buy" ${p.stock<=0?'disabled':''} onclick="buy('${p.id}')">${p.stock<=0?'Hết hàng':'Mua ngay'}</button>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
+
 async function buy(id) {
   try {
     const r = await api('/api/purchase/' + id, { method:'POST' });
@@ -354,9 +353,6 @@ async function buy(id) {
   } catch(e) { notify('Lỗi: ' + e.message); }
 }
 
-// ---- HỒ SƠ đã render trong loadMe ----
-
-// ---- NẠP TIỀN ----
 async function loadSettings() {
   state.settings = await api('/api/settings');
   const s = state.settings;
@@ -365,6 +361,7 @@ async function loadSettings() {
   document.getElementById('accountNumber').textContent = s.accountNumber || '—';
   document.getElementById('accountHolder').textContent = s.accountHolder || '—';
 }
+
 async function submitDeposit() {
   const amount = document.getElementById('depAmount').value;
   const note = document.getElementById('depNote').value;
@@ -376,6 +373,7 @@ async function submitDeposit() {
     loadDepositHistory();
   } catch(e){ notify('Lỗi: ' + e.message); }
 }
+
 async function loadDepositHistory() {
   const list = await api('/api/deposits');
   const el = document.getElementById('depositHistory');
@@ -387,7 +385,6 @@ async function loadDepositHistory() {
   `).join('') || `<div class="empty">Chưa có yêu cầu nạp tiền</div>`;
 }
 
-// ---- LỊCH SỬ ĐÃ MUA ----
 async function loadHistory() {
   const list = await api('/api/purchases');
   const el = document.getElementById('view-history');
@@ -400,7 +397,6 @@ async function loadHistory() {
   `).join('') || `<div class="empty">Bạn chưa mua sản phẩm nào.</div>`;
 }
 
-// ---- ADMIN: SẢN PHẨM ----
 async function addProduct() {
   const name = document.getElementById('pName').value.trim();
   const price = document.getElementById('pPrice').value;
@@ -411,26 +407,28 @@ async function addProduct() {
   ['pName','pPrice','pImage','pDesc'].forEach(id => document.getElementById(id).value='');
   await loadProducts();
 }
+
 async function deleteProduct(id) {
   await api('/api/products/' + id, { method:'DELETE' });
   await loadProducts();
 }
+
 function renderAdminProducts() {
   document.getElementById('adminProductList').innerHTML = state.products.map(p => `
     <div class="admin-item">
       <img src="${p.image || 'https://placehold.co/100'}">
-      <div class="info"><b>${p.name}</b><span>${money(p.price)} · còn ${p.stock}</span></div>
+      <div class="info"><b>${p.name}</b><span>${money(p.price)} (Sỉ: ${money(p.sellerPrice||p.price)}) · còn ${p.stock}</span></div>
       <div class="acts"><button class="del-btn" onclick="deleteProduct('${p.id}')">Xóa</button></div>
     </div>
   `).join('') || `<div class="empty">Chưa có sản phẩm</div>`;
 }
 
-// ---- ADMIN: KHO KEY ----
 function fillKeyProductSelect() {
   const sel = document.getElementById('keyProductSelect');
   sel.innerHTML = state.products.map(p => `<option value="${p.id}">${p.name} (còn ${p.stock})</option>`).join('');
   if (state.products.length) loadKeysForProduct();
 }
+
 async function loadKeysForProduct() {
   const id = document.getElementById('keyProductSelect').value;
   if (!id) return;
@@ -440,6 +438,7 @@ async function loadKeysForProduct() {
     <div class="key-row"><span>${k}</span><button class="del-btn" onclick="deleteKey('${id}', '${k.replace(/'/g,"\\'")}')">Xóa</button></div>
   `).join('') || `<div class="empty">Chưa có key nào</div>`;
 }
+
 async function addKeys() {
   const id = document.getElementById('keyProductSelect').value;
   const keysText = document.getElementById('newKeys').value;
@@ -451,13 +450,45 @@ async function addKeys() {
   await loadProducts();
   loadKeysForProduct();
 }
+
 async function deleteKey(id, key) {
   await api('/api/products/' + id + '/keys', { method:'DELETE', body: JSON.stringify({ key }) });
   await loadProducts();
   loadKeysForProduct();
 }
 
-// ---- ADMIN: QR ----
+// Quản lý Seller
+async function addSeller() {
+  const sellerId = document.getElementById('sellerTelegramId').value.trim();
+  if (!sellerId) return notify('Vui lòng nhập ID Telegram của seller');
+  try {
+    await api('/api/sellers', { method: 'POST', body: JSON.stringify({ telegramId: Number(sellerId) }) });
+    document.getElementById('sellerTelegramId').value = '';
+    notify('Đã thêm seller thành công!');
+    loadSellers();
+  } catch(e) { notify('Lỗi: ' + e.message); }
+}
+
+async function loadSellers() {
+  try {
+    const sellers = await api('/api/sellers');
+    document.getElementById('sellerList').innerHTML = sellers.map(s => `
+      <div class="order-card" style="display:flex; justify-content:space-between; align-items:center;">
+        <div>ID: <b>${s.telegramId}</b></div>
+        <button class="del-btn" onclick="removeSeller(${s.telegramId})">Xóa</button>
+      </div>
+    `).join('') || '<div class="empty">Chưa có seller nào</div>';
+  } catch(e) { console.error(e); }
+}
+
+async function removeSeller(telegramId) {
+  try {
+    await api('/api/sellers/' + telegramId, { method: 'DELETE' });
+    notify('Đã xóa seller');
+    loadSellers();
+  } catch(e) { notify('Lỗi: ' + e.message); }
+}
+
 async function saveSettings() {
   const qrImage = document.getElementById('setQrImage').value.trim();
   const bankName = document.getElementById('setBankName').value.trim();
@@ -467,6 +498,7 @@ async function saveSettings() {
   notify('Đã lưu cài đặt');
   loadSettings();
 }
+
 function fillSettingsForm() {
   const s = state.settings;
   document.getElementById('setQrImage').value = s.qrImage || '';
@@ -475,7 +507,6 @@ function fillSettingsForm() {
   document.getElementById('setAccountHolder').value = s.accountHolder || '';
 }
 
-// ---- ADMIN: DUYỆT NẠP TIỀN ----
 async function loadAdminDeposits() {
   const list = await api('/api/deposits');
   document.getElementById('adminDepositList').innerHTML = list.map(d => `
@@ -491,12 +522,12 @@ async function loadAdminDeposits() {
     </div>
   `).join('') || `<div class="empty">Không có yêu cầu nào</div>`;
 }
+
 async function reviewDeposit(id, status) {
   await api('/api/deposits/' + id, { method:'PUT', body: JSON.stringify({ status }) });
   loadAdminDeposits();
 }
 
-// ---- ĐIỀU HƯỚNG TAB CHÍNH ----
 function bindMainTabs() {
   document.querySelectorAll('#bottomNav .tab-btn').forEach(btn => {
     btn.onclick = () => {
@@ -512,7 +543,6 @@ function bindMainTabs() {
   });
 }
 
-// ---- ADMIN ẩn ở góc: mở / đóng ----
 function openAdmin() {
   ['shop','profile','deposit','history'].forEach(t => document.getElementById('view-'+t).style.display = 'none');
   document.getElementById('view-admin').style.display = 'block';
@@ -522,7 +552,9 @@ function openAdmin() {
   fillKeyProductSelect();
   loadSettings().then(fillSettingsForm);
   loadAdminDeposits();
+  loadSellers();
 }
+
 function closeAdmin() {
   document.getElementById('view-admin').style.display = 'none';
   document.getElementById('bottomNav').style.display = 'flex';
@@ -530,13 +562,14 @@ function closeAdmin() {
   const activeBtn = document.querySelector('#bottomNav .tab-btn.active') || document.querySelector('#bottomNav .tab-btn');
   activeBtn.click();
 }
+
 function bindSubTabs() {
   document.querySelectorAll('.sub-tab').forEach(btn => {
     btn.onclick = () => {
       document.querySelectorAll('.sub-tab').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
       const sub = btn.dataset.sub;
-      ['prod','keys','qr','dep'].forEach(s => {
+      ['prod','keys','sellers','qr','dep'].forEach(s => {
         document.getElementById('admin-'+s).style.display = (s===sub) ? 'block' : 'none';
       });
     };
@@ -546,8 +579,8 @@ function bindSubTabs() {
 (async function init() {
   bindMainTabs();
   bindSubTabs();
-  loadMe();
-  loadProducts();
+  await loadMe();
+  await loadProducts();
 })();
 </script>
 </body>
