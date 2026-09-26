@@ -43,37 +43,6 @@
   @keyframes floatB{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(-45px,40px) scale(1.08); } }
   @keyframes floatC{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(35px,-50px) scale(1.15); } }
 
-  /* ===== Màn hình loading ===== */
-  #loadingScreen{
-    position:fixed; inset:0; z-index:999; background:var(--bg);
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
-  }
-  #loadingScreen.hide{
-    opacity:0; transform:scale(1.18); filter:blur(4px); pointer-events:none;
-    transition: opacity .35s cubic-bezier(.4,0,.2,1), transform .35s cubic-bezier(.4,0,.2,1), filter .35s ease;
-  }
-  .loader-wrap{ position:relative; width:116px; height:116px; }
-  .loader-spin{
-    position:absolute; inset:-8px; border-radius:50%;
-    border:3px dashed var(--link); opacity:.35;
-    animation: spin 2.4s linear infinite;
-  }
-  @keyframes spin{ to{ transform:rotate(360deg); } }
-  .loader-ring{ width:116px; height:116px; transform:rotate(-90deg); }
-  .ring-bg{ fill:none; stroke:var(--secbg); stroke-width:8; }
-  .ring-fg{
-    fill:none; stroke:var(--btn); stroke-width:8; stroke-linecap:round;
-    stroke-dasharray:314; stroke-dashoffset:314;
-    transition: stroke-dashoffset .18s ease-out;
-    filter:drop-shadow(0 0 5px var(--btn));
-  }
-  .loader-percent{
-    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    font-size:21px; font-weight:700; color:var(--text);
-  }
-  .loader-title{ font-size:13px; color:var(--hint); letter-spacing:.4px; }
-  .loader-logo{ font-size:30px; position:absolute; top:-46px; left:50%; transform:translateX(-50%); }
-
   header{
     position:sticky; top:0; z-index:10;
     background:linear-gradient(180deg, var(--bg) 80%, transparent);
@@ -124,8 +93,15 @@
   .grid{ display:grid; grid-template-columns: repeat(2, 1fr); gap:12px; }
   .card{
     background:var(--secbg); border-radius:16px; overflow:hidden; display:flex; flex-direction:column;
-    box-shadow:0 3px 12px -6px rgba(0,0,0,.25); transition: transform .15s ease;
+    box-shadow:0 3px 12px -6px rgba(0,0,0,.25);
+    animation: cardIn .5s cubic-bezier(.2,.8,.2,1) both;
+    transition: transform .15s ease;
   }
+  @keyframes cardIn{ from{ opacity:0; transform:scale(.82) translateY(18px); } to{ opacity:1; transform:scale(1) translateY(0); } }
+  .card:nth-child(1){ animation-delay:.03s; } .card:nth-child(2){ animation-delay:.07s; }
+  .card:nth-child(3){ animation-delay:.11s; } .card:nth-child(4){ animation-delay:.15s; }
+  .card:nth-child(5){ animation-delay:.19s; } .card:nth-child(6){ animation-delay:.23s; }
+  .card:nth-child(n+7){ animation-delay:.26s; }
   .card:active{ transform:scale(.97); }
   .card img{ width:100%; height:110px; object-fit:cover; background:#ddd; }
   .card-body{ padding:10px; display:flex; flex-direction:column; gap:6px; flex:1; }
@@ -193,19 +169,6 @@
   <span class="blob b1"></span>
   <span class="blob b2"></span>
   <span class="blob b3"></span>
-</div>
-
-<div id="loadingScreen">
-  <div class="loader-wrap">
-    <span class="loader-logo">🛍</span>
-    <div class="loader-spin"></div>
-    <svg class="loader-ring" viewBox="0 0 120 120">
-      <circle class="ring-bg" cx="60" cy="60" r="50"/>
-      <circle class="ring-fg" id="ringFg" cx="60" cy="60" r="50"/>
-    </svg>
-    <div class="loader-percent" id="loaderPercent">0%</div>
-  </div>
-  <div class="loader-title">Đang tải cửa hàng...</div>
 </div>
 
 <header>
@@ -566,7 +529,7 @@ function bindSubTabs() {
   await runLoading();
 })();
 
-// ---- MÀN HÌNH LOADING 0% -> 100% (nhanh) ----
+// ---- MÀN HÌNH LOADING 0% -> 100% (cực nhanh) ----
 const RING_CIRC = 314; // 2 * π * r(50)
 function setLoaderPercent(p) {
   document.getElementById('ringFg').style.strokeDashoffset = RING_CIRC - (p/100) * RING_CIRC;
@@ -579,25 +542,23 @@ function runLoading() {
     const dataPromise = Promise.all([loadMe(), loadProducts()]).catch(() => {});
 
     const tick = setInterval(() => {
-      if (pct < 90) {
-        pct = Math.min(90, pct + Math.random() * 16 + 10);
+      if (pct < 92) {
+        pct = Math.min(92, pct + Math.random() * 22 + 16);
         setLoaderPercent(Math.floor(pct));
       }
-    }, 60);
+    }, 35);
 
     dataPromise.then(() => {
       clearInterval(tick);
       const finish = setInterval(() => {
-        pct = Math.min(100, pct + 12);
+        pct = Math.min(100, pct + 20);
         setLoaderPercent(Math.floor(pct));
         if (pct >= 100) {
           clearInterval(finish);
-          setTimeout(() => {
-            document.getElementById('loadingScreen').classList.add('hide');
-            setTimeout(resolve, 360);
-          }, 90);
+          document.getElementById('loadingScreen').classList.add('hide');
+          setTimeout(resolve, 280);
         }
-      }, 12);
+      }, 10);
     });
   });
 }
