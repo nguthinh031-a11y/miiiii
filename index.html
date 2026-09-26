@@ -47,9 +47,11 @@
   #loadingScreen{
     position:fixed; inset:0; z-index:999; background:var(--bg);
     display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
-    transition: opacity .45s ease, transform .45s ease;
   }
-  #loadingScreen.hide{ opacity:0; transform:scale(1.06); pointer-events:none; }
+  #loadingScreen.hide{
+    opacity:0; transform:scale(1.18); filter:blur(4px); pointer-events:none;
+    transition: opacity .35s cubic-bezier(.4,0,.2,1), transform .35s cubic-bezier(.4,0,.2,1), filter .35s ease;
+  }
   .loader-wrap{ position:relative; width:116px; height:116px; }
   .loader-spin{
     position:absolute; inset:-8px; border-radius:50%;
@@ -79,6 +81,7 @@
     padding: calc(10px + env(safe-area-inset-top,0px)) 16px 10px;
     display:flex; align-items:center; justify-content:space-between;
     border-bottom:1px solid var(--secbg);
+    animation: zoomIn .5s cubic-bezier(.2,.8,.2,1) both;
   }
   header h1{ font-size:17px; margin:0; letter-spacing:.2px; }
   .balance-pill{
@@ -86,8 +89,8 @@
     color:var(--btn-text); padding:7px 14px; border-radius:20px; font-size:13px; font-weight:700;
     box-shadow:0 3px 10px -3px var(--btn);
   }
-  main{ padding: 12px 16px 24px; animation: fadeUp .4s ease; }
-  @keyframes fadeUp{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
+  main{ position:relative; z-index:1; padding: 12px 16px 24px; animation: zoomIn .5s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes zoomIn{ from{ opacity:0; transform:scale(.93) translateY(10px); } to{ opacity:1; transform:scale(1) translateY(0); } }
   h3.section{ font-size:14px; color:var(--hint); margin:16px 0 8px; }
 
   /* ===== Nút admin ẩn ở góc ===== */
@@ -185,6 +188,12 @@
 </style>
 </head>
 <body>
+
+<div id="bgFx">
+  <span class="blob b1"></span>
+  <span class="blob b2"></span>
+  <span class="blob b3"></span>
+</div>
 
 <div id="loadingScreen">
   <div class="loader-wrap">
@@ -557,7 +566,7 @@ function bindSubTabs() {
   await runLoading();
 })();
 
-// ---- MÀN HÌNH LOADING 0% -> 100% ----
+// ---- MÀN HÌNH LOADING 0% -> 100% (nhanh) ----
 const RING_CIRC = 314; // 2 * π * r(50)
 function setLoaderPercent(p) {
   document.getElementById('ringFg').style.strokeDashoffset = RING_CIRC - (p/100) * RING_CIRC;
@@ -570,25 +579,25 @@ function runLoading() {
     const dataPromise = Promise.all([loadMe(), loadProducts()]).catch(() => {});
 
     const tick = setInterval(() => {
-      if (pct < 88) {
-        pct = Math.min(88, pct + Math.random() * 9 + 3);
+      if (pct < 90) {
+        pct = Math.min(90, pct + Math.random() * 16 + 10);
         setLoaderPercent(Math.floor(pct));
       }
-    }, 130);
+    }, 60);
 
     dataPromise.then(() => {
       clearInterval(tick);
       const finish = setInterval(() => {
-        pct = Math.min(100, pct + 5);
+        pct = Math.min(100, pct + 12);
         setLoaderPercent(Math.floor(pct));
         if (pct >= 100) {
           clearInterval(finish);
           setTimeout(() => {
             document.getElementById('loadingScreen').classList.add('hide');
-            setTimeout(resolve, 450);
-          }, 250);
+            setTimeout(resolve, 360);
+          }, 90);
         }
-      }, 20);
+      }, 12);
     });
   });
 }
