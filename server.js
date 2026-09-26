@@ -1,8 +1,8 @@
 // ============================================================
 // CẤU HÌNH - THAY THÔNG TIN CỦA BẠN VÀO ĐÂY
 // ============================================================
-const BOT_TOKEN = "PASTE_YOUR_BOT_TOKEN_HERE";   // Lấy từ @BotFather sau khi /newbot
-const ADMIN_ID  = 123456789;                      // ID Telegram của bạn (lấy từ @userinfobot)
+const BOT_TOKEN = 8808185954:AAHh5JdU4w3QfBIS7Cp5u2GHJMRAMn-2Q0Q";   // Lấy từ @BotFather sau khi /newbot
+const ADMIN_ID  = 7403694945;                      // ID Telegram của bạn (lấy từ @userinfobot)
 const PORT = process.env.PORT || 3000;
 // ============================================================
 
